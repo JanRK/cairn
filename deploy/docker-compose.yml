@@ -1,0 +1,24 @@
+services:
+  cairn:
+    image: ${CAIRN_IMAGE:-ghcr.io/janrk/cairn:latest}
+    restart: unless-stopped
+    environment:
+      CAIRN_DB_PATH: /data/cairn.db
+      CAIRN_ADDR: ":8080"
+      CAIRN_REVIEW_ADDR: ":8081"
+      CAIRN_RETENTION: 168h
+      CAIRN_LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - cairn-data:/data
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/cairn", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  cairn-data:
