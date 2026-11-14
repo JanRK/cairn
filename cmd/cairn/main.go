@@ -20,6 +20,7 @@ import (
 	"github.com/janrk/cairn/internal/config"
 	"github.com/janrk/cairn/internal/httpapi"
 	"github.com/janrk/cairn/internal/intake"
+	"github.com/janrk/cairn/internal/retention"
 	"github.com/janrk/cairn/internal/reviewmcp"
 	"github.com/janrk/cairn/internal/store"
 )
@@ -102,10 +103,19 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		}()
 	}
 
+	sweepCtx, stopSweep := context.WithCancel(ctx)
+	sweepDone := make(chan struct{})
+	go func() {
+		defer close(sweepDone)
+		(&retention.Sweeper{Store: st, Retention: cfg.Retention, Now: time.Now, Log: log}).Run(sweepCtx)
+	}()
+
 	select {
 	case <-ctx.Done():
 	case err = <-errc:
 	}
+	stopSweep()
+	<-sweepDone
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
 	for _, srv := range servers {
