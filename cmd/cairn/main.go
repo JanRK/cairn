@@ -85,7 +85,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	agentmcp.Register(agentMux, svc, log)
 
 	reviewMux := http.NewServeMux()
-	reviewmcp.Register(reviewMux, &reviewmcp.Service{Store: st, Now: time.Now})
+	reviewmcp.Register(reviewMux, &reviewmcp.Service{Store: st, Now: time.Now, Log: log})
 	reviewMux.HandleFunc("GET /healthz", httpapi.Healthz(st))
 
 	servers := []*http.Server{

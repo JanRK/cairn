@@ -5,6 +5,7 @@ package reviewmcp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,17 +17,18 @@ import (
 // Path is where the review endpoint mounts.
 const Path = "/mcp/review"
 
-// Service backs the review tools. Now is the clock used for handled_at.
+// Service backs the review tools. Now is the clock used for handled_at; Log may be nil.
 type Service struct {
 	Store *store.Store
 	Now   func() time.Time
+	Log   *slog.Logger
 }
 
 // Register mounts the review MCP endpoint on mux.
 func Register(mux *http.ServeMux, svc *Service) {
 	srv := NewServer(svc)
 	mux.Handle(Path, mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return srv },
-		&mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true}))
+		&mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true, Logger: svc.Log}))
 }
 
 // ListInput filters list_reports.
