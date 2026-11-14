@@ -15,7 +15,6 @@
 ### Bug Fixes
 
 * **deps:** bump actions/checkout from 6.1.0 to 7.0.1 ([#2](https://github.com/JanRK/cairn/issues/2)) ([52f81b2](https://github.com/JanRK/cairn/commit/52f81b292f8c07ef64d517e677905ce60407b7cf))
-* **deps:** bump actions/setup-go from 6.5.0 to 7.0.0 ([67f9a63](https://github.com/JanRK/cairn/commit/67f9a63b5f4e2d15070ed0803bbe91e72c7828d2))
 * **deps:** bump actions/setup-go from 6.5.0 to 7.0.0 ([2c8124a](https://github.com/JanRK/cairn/commit/2c8124aec461fe332d2bddeac522399f68272782))
 * log review MCP protocol errors like the agent endpoint ([c1912cd](https://github.com/JanRK/cairn/commit/c1912cd220eedaf50fca30d68829c0895010baef))
 * reject trailing data after the report JSON ([6c7e029](https://github.com/JanRK/cairn/commit/6c7e0290dadc44eca5f27390ca396fe4a43d8bb9))
