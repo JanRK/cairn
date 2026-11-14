@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l . | tee /dev/stderr)"
+      - name: go vet
+        run: go vet ./...
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+      # ubuntu runners ship gcc, which -race needs.
+      - name: go test -race
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race ./...
+
+  docker:
+    runs-on: ubuntu-latest
+    env:
+      CAIRN_IMAGE: cairn:ci
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - name: docker build
+        run: docker build --build-arg VERSION=ci -t "$CAIRN_IMAGE" .
+      - name: version
+        run: docker run --rm "$CAIRN_IMAGE" --version
+      - name: compose up
+        run: docker compose -f deploy/docker-compose.yml up --wait --wait-timeout 60
+      - name: smoke POST /reports
+        run: |
+          status=$(curl -sS -o /dev/stderr -w '%{http_code}' -X POST http://localhost:8080/reports \
+            -H 'Content-Type: application/json' \
+            -d '{"kind":"other","summary":"ci smoke","details":"posted by ci"}')
+          test "$status" = 201
+      - name: logs
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml logs
+      - name: compose down
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down -v
+
+  ci:
+    if: always()
+    needs: [lint, test, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: all jobs passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          for r in $RESULTS; do [ "$r" = success ] || exit 1; done
