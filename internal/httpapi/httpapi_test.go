@@ -65,9 +65,10 @@ func TestPostReportCreated(t *testing.T) {
 func TestPostReportInvalid(t *testing.T) {
 	srv, _ := newServer(t)
 	for name, body := range map[string]string{
-		"fields":  `{"kind":"nope","summary":""}`,
-		"json":    `{`,
-		"unknown": `{"kind":"idea","summary":"s","details":"d","id":"x"}`,
+		"fields":   `{"kind":"nope","summary":""}`,
+		"json":     `{`,
+		"unknown":  `{"kind":"idea","summary":"s","details":"d","id":"x"}`,
+		"trailing": `{"kind":"idea","summary":"s","details":"d"} {}`,
 	} {
 		resp, err := http.Post(srv.URL+"/reports", "application/json", strings.NewReader(body))
 		if err != nil {

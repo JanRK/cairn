@@ -48,7 +48,11 @@ func postReport(svc *intake.Service, log *slog.Logger) http.HandlerFunc {
 		var in report.Input
 		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
 		dec.DisallowUnknownFields()
-		if err := dec.Decode(&in); err != nil {
+		err := dec.Decode(&in)
+		if err == nil && dec.More() {
+			err = errors.New("unexpected data after JSON object")
+		}
+		if err != nil {
 			writeJSON(w, http.StatusBadRequest, errorBody{Errors: []report.FieldError{{Field: "body", Message: err.Error()}}})
 			return
 		}
