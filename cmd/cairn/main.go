@@ -20,6 +20,8 @@ import (
 	"github.com/janrk/cairn/internal/config"
 	"github.com/janrk/cairn/internal/httpapi"
 	"github.com/janrk/cairn/internal/intake"
+	"github.com/janrk/cairn/internal/retention"
+	"github.com/janrk/cairn/internal/reviewmcp"
 	"github.com/janrk/cairn/internal/store"
 )
 
@@ -82,8 +84,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	httpapi.Register(agentMux, svc, st, log)
 	agentmcp.Register(agentMux, svc, log)
 
+	reviewMux := http.NewServeMux()
+	reviewmcp.Register(reviewMux, &reviewmcp.Service{Store: st, Now: time.Now})
+	reviewMux.HandleFunc("GET /healthz", httpapi.Healthz(st))
+
 	servers := []*http.Server{
 		{Addr: cfg.Addr, Handler: agentMux, ReadHeaderTimeout: 10 * time.Second},
+		{Addr: cfg.ReviewAddr, Handler: reviewMux, ReadHeaderTimeout: 10 * time.Second},
 	}
 
 	errc := make(chan error, len(servers))
@@ -96,10 +103,19 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		}()
 	}
 
+	sweepCtx, stopSweep := context.WithCancel(ctx)
+	sweepDone := make(chan struct{})
+	go func() {
+		defer close(sweepDone)
+		(&retention.Sweeper{Store: st, Retention: cfg.Retention, Now: time.Now, Log: log}).Run(sweepCtx)
+	}()
+
 	select {
 	case <-ctx.Done():
 	case err = <-errc:
 	}
+	stopSweep()
+	<-sweepDone
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
 	for _, srv := range servers {

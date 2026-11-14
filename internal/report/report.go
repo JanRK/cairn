@@ -97,3 +97,25 @@ func Validate(in Input) []FieldError {
 	}
 	return errs
 }
+
+// Review statuses. Open statuses await triage; handled ones are done and
+// subject to retention.
+const (
+	StatusAccepted  = "accepted"
+	StatusApplied   = "applied"
+	StatusRejected  = "rejected"
+	StatusDuplicate = "duplicate"
+)
+
+var (
+	OpenStatuses    = []string{StatusNew, StatusAccepted}
+	HandledStatuses = []string{StatusApplied, StatusRejected, StatusDuplicate}
+)
+
+// ValidStatus reports whether s is a known status.
+func ValidStatus(s string) bool {
+	return slices.Contains(OpenStatuses, s) || slices.Contains(HandledStatuses, s)
+}
+
+// IsHandled reports whether s is a handled status.
+func IsHandled(s string) bool { return slices.Contains(HandledStatuses, s) }

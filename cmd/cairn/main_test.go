@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/janrk/cairn/internal/reviewmcp"
 )
 
 func freeAddr(t *testing.T) string {
@@ -69,6 +71,23 @@ func TestServeHealthcheckAndLogs(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("status %d", resp.StatusCode)
+	}
+
+	for _, c := range []struct {
+		addr string
+		want int
+	}{
+		{env["CAIRN_REVIEW_ADDR"] + reviewmcp.Path, http.StatusOK},
+		{addr + reviewmcp.Path, http.StatusNotFound},
+	} {
+		resp, err := http.Post("http://"+c.addr, "application/json", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusNotFound != (c.want == http.StatusNotFound) {
+			t.Fatalf("%s: status %d", c.addr, resp.StatusCode)
+		}
 	}
 
 	cancel()
