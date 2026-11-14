@@ -169,3 +169,14 @@ func (s *Store) SetStatus(ctx context.Context, ids []string, status, note, dupli
 	}
 	return tx.Commit()
 }
+
+// DeleteHandledBefore deletes reports in a handled status whose handled_at is
+// before cutoff, and returns how many were deleted.
+func (s *Store) DeleteHandledBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM reports WHERE handled_at IS NOT NULL AND handled_at < ?`,
+		cutoff.UTC().Format(timeLayout))
+	if err != nil {
+		return 0, fmt.Errorf("delete handled reports: %w", err)
+	}
+	return res.RowsAffected()
+}
