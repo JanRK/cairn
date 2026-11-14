@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/janrk/cairn/internal/agentmcp"
 	"github.com/janrk/cairn/internal/config"
 	"github.com/janrk/cairn/internal/httpapi"
 	"github.com/janrk/cairn/internal/intake"
@@ -77,7 +78,9 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	defer func() { _ = st.Close() }()
 
 	agentMux := http.NewServeMux()
-	httpapi.Register(agentMux, intake.New(st, log), st, log)
+	svc := intake.New(st, log)
+	httpapi.Register(agentMux, svc, st, log)
+	agentmcp.Register(agentMux, svc, log)
 
 	servers := []*http.Server{
 		{Addr: cfg.Addr, Handler: agentMux, ReadHeaderTimeout: 10 * time.Second},
