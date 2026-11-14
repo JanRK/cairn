@@ -19,6 +19,7 @@ import (
 	"github.com/janrk/cairn/internal/config"
 	"github.com/janrk/cairn/internal/httpapi"
 	"github.com/janrk/cairn/internal/intake"
+	"github.com/janrk/cairn/internal/reviewmcp"
 	"github.com/janrk/cairn/internal/store"
 )
 
@@ -79,8 +80,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	agentMux := http.NewServeMux()
 	httpapi.Register(agentMux, intake.New(st, log), st, log)
 
+	reviewMux := http.NewServeMux()
+	reviewmcp.Register(reviewMux, &reviewmcp.Service{Store: st, Now: time.Now})
+	reviewMux.HandleFunc("GET /healthz", httpapi.Healthz(st))
+
 	servers := []*http.Server{
 		{Addr: cfg.Addr, Handler: agentMux, ReadHeaderTimeout: 10 * time.Second},
+		{Addr: cfg.ReviewAddr, Handler: reviewMux, ReadHeaderTimeout: 10 * time.Second},
 	}
 
 	errc := make(chan error, len(servers))
